@@ -40,9 +40,8 @@
 #include <iostream>
 #include <iterator>
 #include <sstream>
-#include <boost/optional.hpp>
 using namespace std;
-#include "string_tools.h"
+#include "epee/string_tools.h"
 using namespace epee;
 using namespace boost;
 #include "cryptonote_format_utils.h"
@@ -114,10 +113,11 @@ BOOST_AUTO_TEST_CASE(transfers__fee)
 {
 	uint8_t fork_version = 16;
 	auto use_fork_rules_fn = monero_fork_rules::make_use_fork_rules_fn(fork_version);
-	uint64_t fee_per_b = 24658;
+	uint64_t fee_per_b = 215;
+	uint64_t fee_per_o = 100000;
 	uint32_t priority = 2;
-	uint64_t est_fee = monero_fee_utils::estimated_tx_network_fee(fee_per_b, priority, use_fork_rules_fn);
-	std::cout << "transfers__fee: est_fee with fee_per_b " << fee_per_b << ": " << est_fee << std::endl;
+	uint64_t est_fee = monero_fee_utils::estimated_tx_network_fee(fee_per_b,fee_per_o, priority, use_fork_rules_fn);
+	std::cout << "transfers__fee: est_fee with fee_per_b " << fee_per_b << ": " << fee_per_o << ": " << est_fee << std::endl;
 	BOOST_REQUIRE(est_fee > 0);
 }
 BOOST_AUTO_TEST_CASE(pre_step2_tie_unspent_outs_to_mix_outs_for_all_future_tx_attempts__use_all_server_mix_outs)
@@ -130,7 +130,7 @@ BOOST_AUTO_TEST_CASE(pre_step2_tie_unspent_outs_to_mix_outs_for_all_future_tx_at
 	boost::property_tree::json_parser::read_json(ss, pt);
 	//
 	vector<monero_transfer_utils::SpendableOutput> unspent_outs;
-	BOOST_FOREACH(boost::property_tree::ptree::value_type &output_desc, pt.get_child("unspent_outs"))
+	for(boost::property_tree::ptree::value_type &output_desc : pt.get_child("unspent_outs"))
 	{
 		assert(output_desc.first.empty()); // array elements have no names
 		monero_transfer_utils::SpendableOutput out{};
@@ -154,12 +154,12 @@ BOOST_AUTO_TEST_CASE(pre_step2_tie_unspent_outs_to_mix_outs_for_all_future_tx_at
 		ss << pre_step2__mix_outs_from_server_json;
 		boost::property_tree::json_parser::read_json(ss, pt);
 
-		BOOST_FOREACH(boost::property_tree::ptree::value_type &mix_out_desc, pt.get_child("mix_outs"))
+		for(boost::property_tree::ptree::value_type &mix_out_desc : pt.get_child("mix_outs"))
 		{
 			assert(mix_out_desc.first.empty()); // array elements have no names
 			auto amountAndOuts = monero_transfer_utils::RandomAmountOutputs{};
 			amountAndOuts.amount = stoull(mix_out_desc.second.get<string>("amount"));
-			BOOST_FOREACH(boost::property_tree::ptree::value_type &mix_out_output_desc, mix_out_desc.second.get_child("outputs"))
+			for(boost::property_tree::ptree::value_type &mix_out_output_desc : mix_out_desc.second.get_child("outputs"))
 			{
 				assert(mix_out_output_desc.first.empty()); // array elements have no names
 				auto amountOutput = monero_transfer_utils::RandomAmountOutput{};
@@ -215,7 +215,7 @@ BOOST_AUTO_TEST_CASE(pre_step2_tie_unspent_outs_to_mix_outs_for_all_future_tx_at
 	boost::property_tree::json_parser::read_json(ss, pt);
 	//
 	vector<monero_transfer_utils::SpendableOutput> unspent_outs;
-	BOOST_FOREACH(boost::property_tree::ptree::value_type &output_desc, pt.get_child("unspent_outs"))
+	for(boost::property_tree::ptree::value_type &output_desc : pt.get_child("unspent_outs"))
 	{
 		assert(output_desc.first.empty()); // array elements have no names
 		monero_transfer_utils::SpendableOutput out{};
@@ -242,12 +242,12 @@ BOOST_AUTO_TEST_CASE(pre_step2_tie_unspent_outs_to_mix_outs_for_all_future_tx_at
 		boost::property_tree::json_parser::read_json(ss, pt);
 		//
 		size_t i = 0;
-		BOOST_FOREACH(boost::property_tree::ptree::value_type &mix_out_desc, pt.get_child("mix_outs"))
+		for(boost::property_tree::ptree::value_type &mix_out_desc : pt.get_child("mix_outs"))
 		{
 			assert(mix_out_desc.first.empty()); // array elements have no names
 			auto amountAndOuts = monero_transfer_utils::RandomAmountOutputs{};
 			amountAndOuts.amount = stoull(mix_out_desc.second.get<string>("amount"));
-			BOOST_FOREACH(boost::property_tree::ptree::value_type &mix_out_output_desc, mix_out_desc.second.get_child("outputs"))
+			for(boost::property_tree::ptree::value_type &mix_out_output_desc : mix_out_desc.second.get_child("outputs"))
 			{
 				assert(mix_out_output_desc.first.empty()); // array elements have no names
 				auto amountOutput = monero_transfer_utils::RandomAmountOutput{};
@@ -384,7 +384,7 @@ BOOST_AUTO_TEST_CASE(bridge__transfers__send__sweepDust)
 				//
 				// for next round's integration - if it needs to re-enter... arg "prior_attempt_size_calcd_fee" and "prior_attempt_unspent_outs_to_mix_outs"
 				root.put("prior_attempt_size_calcd_fee", *fee_actually_needed_string);
-				BOOST_FOREACH(boost::property_tree::ptree::value_type &outs_to_mix_outs_desc, *prior_attempt_unspent_outs_to_mix_outs)
+				for(boost::property_tree::ptree::value_type &outs_to_mix_outs_desc : *prior_attempt_unspent_outs_to_mix_outs)
 				{
 					string out_pub_key = outs_to_mix_outs_desc.first;
 					cout << "bridge__transfers__send__sweepDust: step1: prior output " << out_pub_key << endl;
@@ -433,7 +433,7 @@ BOOST_AUTO_TEST_CASE(bridge__transfers__send__sweepDust)
 			cout << "bridge__transfers__send__sweepDust: step1: using_fee " << *using_fee_string << endl;
 			//
 			using_outs = ret_tree.get_child("using_outs"); // save this for step2
-			BOOST_FOREACH(boost::property_tree::ptree::value_type &output_desc, using_outs)
+			for(boost::property_tree::ptree::value_type &output_desc : using_outs)
 			{
 				assert(output_desc.first.empty()); // array elements have no names
 				cout << "bridge__transfers__send__sweepDust: step1: using_out " << output_desc.second.get<string>("public_key") << endl;
@@ -488,7 +488,7 @@ BOOST_AUTO_TEST_CASE(bridge__transfers__send__sweepDust)
 			}
 			mix_outs = ret_tree.get_child(ret_json_key__send__mix_outs());
 			BOOST_REQUIRE(mix_outs.size() == using_outs.size());
-			BOOST_FOREACH(boost::property_tree::ptree::value_type &mix_out_desc, mix_outs)
+			for(boost::property_tree::ptree::value_type &mix_out_desc : mix_outs)
 			{
 				assert(mix_out_desc.first.empty()); // array elements have no names
 				cout << "bridge__transfers__send__sweepDust: pre_step2: amount " << mix_out_desc.second.get<string>("amount") << endl;
@@ -496,7 +496,7 @@ BOOST_AUTO_TEST_CASE(bridge__transfers__send__sweepDust)
 			}
 			prior_attempt_unspent_outs_to_mix_outs = ret_tree.get_child(ret_json_key__send__prior_attempt_unspent_outs_to_mix_outs_new());
 			size_t outs_to_mix_outs_count = 0;
-			BOOST_FOREACH(boost::property_tree::ptree::value_type &outs_to_mix_outs_desc, *prior_attempt_unspent_outs_to_mix_outs)
+			for(boost::property_tree::ptree::value_type &outs_to_mix_outs_desc : *prior_attempt_unspent_outs_to_mix_outs)
 			{
 				++outs_to_mix_outs_count;
 				string out_pub_key = outs_to_mix_outs_desc.first;
@@ -518,7 +518,8 @@ BOOST_AUTO_TEST_CASE(bridge__transfers__send__sweepDust)
 			root.put("from_address_string", "43zxvpcj5Xv9SEkNXbMCG7LPQStHMpFCQCmkmR4u5nzjWwq5Xkv5VmGgYEsHXg4ja2FGRD5wMWbBVMijDTqmmVqm93wHGkg");
 			root.put("sec_viewKey_string", "7bea1907940afdd480eff7c4bcadb478a0fbb626df9e3ed74ae801e18f53e104");
 			root.put("sec_spendKey_string", "4e6d43cd03812b803c6f3206689f5fcc910005fc7e91d50d79b0776dbefcd803");
-			root.put("fee_per_b", "24658");
+			root.put("fee_per_b", "666");
+			root.put("fee_per_o", "100000");
 			root.put("fee_mask", "10000");
 			root.put("fork_version", "16");
 			root.put("unlock_time", "0");
@@ -584,7 +585,8 @@ BOOST_AUTO_TEST_CASE(bridge__transfers__send__amountWOnlyDusty)
 	root.put("is_sweeping", "false");
 	root.put("payment_id_string", "d2f602b240fbe624"); // optl
 	root.put("sending_amount", "1000000");
-	root.put("fee_per_b", "24658");
+	root.put("fee_per_b", "666");
+	root.put("fee_per_o", "100000");
 	root.put("fee_mask", "10000");
 	root.put("fork_version", "16");
 	root.put("priority", "1");
@@ -647,7 +649,7 @@ BOOST_AUTO_TEST_CASE(bridge__transfers__send__amount)
 				//
 				// for next round's integration - if it needs to re-enter... arg "prior_attempt_size_calcd_fee" and "prior_attempt_unspent_outs_to_mix_outs"
 				root.put("prior_attempt_size_calcd_fee", *fee_actually_needed_string);
-				BOOST_FOREACH(boost::property_tree::ptree::value_type &outs_to_mix_outs_desc, *prior_attempt_unspent_outs_to_mix_outs)
+				for(boost::property_tree::ptree::value_type &outs_to_mix_outs_desc : *prior_attempt_unspent_outs_to_mix_outs)
 				{
 					string out_pub_key = outs_to_mix_outs_desc.first;
 					cout << "bridge__transfers__send__sweepDust: step1: prior output " << out_pub_key << endl;
@@ -696,7 +698,7 @@ BOOST_AUTO_TEST_CASE(bridge__transfers__send__amount)
 			cout << "bridge__transfers__send__amount: step1: using_fee " << *using_fee_string << endl;
 			//
 			using_outs = ret_tree.get_child("using_outs"); // save this for step2
-			BOOST_FOREACH(boost::property_tree::ptree::value_type &output_desc, using_outs)
+			for(boost::property_tree::ptree::value_type &output_desc : using_outs)
 			{
 				assert(output_desc.first.empty()); // array elements have no names
 				cout << "bridge__transfers__send__amount: step1: using_out " << output_desc.second.get<string>("public_key") << endl;
@@ -751,7 +753,7 @@ BOOST_AUTO_TEST_CASE(bridge__transfers__send__amount)
 			}
 			mix_outs = ret_tree.get_child(ret_json_key__send__mix_outs());
 			BOOST_REQUIRE(mix_outs.size() == using_outs.size());
-			BOOST_FOREACH(boost::property_tree::ptree::value_type &mix_out_desc, mix_outs)
+			for(boost::property_tree::ptree::value_type &mix_out_desc : mix_outs)
 			{
 				assert(mix_out_desc.first.empty()); // array elements have no names
 				cout << "bridge__transfers__send__amount: pre_step2: amount " << mix_out_desc.second.get<string>("amount") << endl;
@@ -759,7 +761,7 @@ BOOST_AUTO_TEST_CASE(bridge__transfers__send__amount)
 			}
 			prior_attempt_unspent_outs_to_mix_outs = ret_tree.get_child(ret_json_key__send__prior_attempt_unspent_outs_to_mix_outs_new());
 			size_t outs_to_mix_outs_count = 0;
-			BOOST_FOREACH(boost::property_tree::ptree::value_type &outs_to_mix_outs_desc, *prior_attempt_unspent_outs_to_mix_outs)
+			for(boost::property_tree::ptree::value_type &outs_to_mix_outs_desc : *prior_attempt_unspent_outs_to_mix_outs)
 			{
 				++outs_to_mix_outs_count;
 				string out_pub_key = outs_to_mix_outs_desc.first;
@@ -782,7 +784,8 @@ BOOST_AUTO_TEST_CASE(bridge__transfers__send__amount)
 			root.put("from_address_string", "43zxvpcj5Xv9SEkNXbMCG7LPQStHMpFCQCmkmR4u5nzjWwq5Xkv5VmGgYEsHXg4ja2FGRD5wMWbBVMijDTqmmVqm93wHGkg");
 			root.put("sec_viewKey_string", "7bea1907940afdd480eff7c4bcadb478a0fbb626df9e3ed74ae801e18f53e104");
 			root.put("sec_spendKey_string", "4e6d43cd03812b803c6f3206689f5fcc910005fc7e91d50d79b0776dbefcd803");
-			root.put("fee_per_b", "24658");
+			root.put("fee_per_b", "666");
+			root.put("fee_per_o", "100000");
 			root.put("fee_mask", "10000");
 			root.put("fork_version", "16");
 			root.put("unlock_time", "0");
@@ -1127,11 +1130,12 @@ BOOST_AUTO_TEST_CASE(bridged__estimated_tx_network_fee)
 	using namespace serial_bridge;
 	//
 	boost::property_tree::ptree root;
-	root.put("fee_per_b", "24658");
-	root.put("fork_version", "16");
+	root.put("fee_per_b", "666");
+	root.put("fee_per_o", "100000");
+	root.put("fork_version", "17");
 	root.put("priority", "2");
 	//
-	auto ret_string = serial_bridge::estimated_tx_network_fee(root.get<string>("priority"), root.get<string>("fee_per_b"), root.get<string>("fork_version"));
+	auto ret_string = serial_bridge::estimated_tx_network_fee(root.get<string>("priority"), root.get<string>("fee_per_b"),root.get<string>("fee_per_o"), root.get<string>("fork_version"));
 	stringstream ret_stream;
 	ret_stream << ret_string;
 	boost::property_tree::ptree ret_tree;
@@ -1243,7 +1247,7 @@ BOOST_AUTO_TEST_CASE(bridge__transfers__send_stagenet_coinbase)
 	// Send algorithm:
 	bool tx_must_be_reconstructed = true; // for ease of writing this code, start this off true & structure whole thing as while loop
 	boost::optional<string> fee_actually_needed_string = none;
-	boost::size_t construction_attempt_n = 0;
+	size_t construction_attempt_n = 0;
 	while (tx_must_be_reconstructed) {
 		construction_attempt_n += 1; // merely kept for assertion purposes
 		//
@@ -1257,7 +1261,8 @@ BOOST_AUTO_TEST_CASE(bridge__transfers__send_stagenet_coinbase)
 			root.put("is_sweeping", "false");
 			root.put("payment_id_string", "d2f602b240fbe624"); // optl
 			root.put("sending_amount", "1000000000000");
-			root.put("fee_per_b", "166333");
+			root.put("fee_per_b", "666");
+			root.put("fee_per_o", "100000");
 			root.put("fee_mask", "10000");
 			root.put("fork_version", "16");
 			root.put("priority", "1");
@@ -1268,7 +1273,7 @@ BOOST_AUTO_TEST_CASE(bridge__transfers__send_stagenet_coinbase)
 				//
 				// for next round's integration - if it needs to re-enter... arg "prior_attempt_size_calcd_fee" and "prior_attempt_unspent_outs_to_mix_outs"
 				root.put("prior_attempt_size_calcd_fee", *fee_actually_needed_string);
-				BOOST_FOREACH(boost::property_tree::ptree::value_type &outs_to_mix_outs_desc, *prior_attempt_unspent_outs_to_mix_outs)
+				for(boost::property_tree::ptree::value_type &outs_to_mix_outs_desc : *prior_attempt_unspent_outs_to_mix_outs)
 				{
 					string out_pub_key = outs_to_mix_outs_desc.first;
 					cout << "bridge__transfers__send__sweepDust: step1: prior output " << out_pub_key << endl;
@@ -1317,7 +1322,7 @@ BOOST_AUTO_TEST_CASE(bridge__transfers__send_stagenet_coinbase)
 			cout << "bridge__transfers__send_stagenet_coinbase: step1: using_fee " << *using_fee_string << endl;
 			//
 			using_outs = ret_tree.get_child("using_outs"); // save this for step2
-			BOOST_FOREACH(boost::property_tree::ptree::value_type &output_desc, using_outs)
+			for(boost::property_tree::ptree::value_type &output_desc : using_outs)
 			{
 				assert(output_desc.first.empty()); // array elements have no names
 				cout << "bridge__transfers__send_stagenet_coinbase: step1: using_out " << output_desc.second.get<string>("public_key") << endl;
@@ -1372,7 +1377,7 @@ BOOST_AUTO_TEST_CASE(bridge__transfers__send_stagenet_coinbase)
 			}
 			mix_outs = ret_tree.get_child(ret_json_key__send__mix_outs());
 			BOOST_REQUIRE(mix_outs.size() == using_outs.size());
-			BOOST_FOREACH(boost::property_tree::ptree::value_type &mix_out_desc, mix_outs)
+			for(boost::property_tree::ptree::value_type &mix_out_desc : mix_outs)
 			{
 				assert(mix_out_desc.first.empty()); // array elements have no names
 				cout << "bridge__transfers__send__amount: pre_step2: amount " << mix_out_desc.second.get<string>("amount") << endl;
@@ -1380,7 +1385,7 @@ BOOST_AUTO_TEST_CASE(bridge__transfers__send_stagenet_coinbase)
 			}
 			prior_attempt_unspent_outs_to_mix_outs = ret_tree.get_child(ret_json_key__send__prior_attempt_unspent_outs_to_mix_outs_new());
 			size_t outs_to_mix_outs_count = 0;
-			BOOST_FOREACH(boost::property_tree::ptree::value_type &outs_to_mix_outs_desc, *prior_attempt_unspent_outs_to_mix_outs)
+			for(boost::property_tree::ptree::value_type &outs_to_mix_outs_desc : *prior_attempt_unspent_outs_to_mix_outs)
 			{
 				++outs_to_mix_outs_count;
 				string out_pub_key = outs_to_mix_outs_desc.first;
@@ -1397,7 +1402,7 @@ BOOST_AUTO_TEST_CASE(bridge__transfers__send_stagenet_coinbase)
 			root.add_child("using_outs", using_outs); // from step1
 			//
 			root.put("payment_id_string", "d2f602b240fbe624"); // optl
-			root.put("nettype_string", string_from_nettype(STAGENET));
+			root.put("nettype_string", string_from_nettype(DEVNET));
 			root.put("to_address_string", "57Hx8QpLUSMjhgoCNkvJ2Ch91mVyxcffESCprnRPrtbphMCv8iGUEfCUJxrpUWUeWrS9vPWnFrnMmTwnFpSKJrSKNuaXc5q");
 			root.put("from_address_string", "56bY2v2RJZNEvrKdYuwG73Q2idshQyGc5fV74BZqoVv72MPSBEakPbfWYtQH4PLGhk3uaCjNZ81XJ7o9pimAXzQFCv7bxxf");
 			root.put("sec_viewKey_string", "9ef8e116d2c774b207a2dd6a234dab8f5d54becc04aa26ccbd6f1f67e8427308");
