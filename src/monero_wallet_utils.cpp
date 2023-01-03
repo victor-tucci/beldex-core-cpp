@@ -30,6 +30,8 @@
 //
 //
 //
+#include <boost/optional.hpp>
+
 #include "monero_wallet_utils.hpp"
 #include <boost/algorithm/string.hpp>
 #include "cryptonote_basic.h"
@@ -375,8 +377,8 @@ bool monero_wallet_utils::address_and_keys_from_seed(
 bool monero_wallet_utils::validate_wallet_components_with( // returns !did_error
 	const string &address_string,
 	const string &sec_viewKey_string,
-	optional<string> sec_spendKey_string,
-	optional<string> sec_seed_string,
+	boost::optional<string> sec_spendKey_string,
+	boost::optional<string> sec_seed_string,
 	cryptonote::network_type nettype,
 	WalletComponentsValidationResults &retVals
 ) { // TODO: how can the err_strings be prepared for localization?
