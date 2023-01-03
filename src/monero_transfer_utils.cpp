@@ -31,9 +31,10 @@
 //
 //
 //
+#include <boost/optional.hpp>
 #include "monero_transfer_utils.hpp"
 #include "wallet_errors.h"
-#include "string_tools.h"
+#include "epee/string_tools.h"
 #include "monero_paymentID_utils.hpp"
 #include "monero_key_image_utils.hpp"
 //
@@ -51,7 +52,7 @@ using namespace monero_key_image_utils; // for API response parsing
 
 namespace {
 CreateTransactionErrorCode _add_pid_to_tx_extra(
-	const optional<string>& payment_id_string,
+	const boost::optional<string>& payment_id_string,
 	vector<uint8_t> &extra
 ) { // Detect hash8 or hash32 char hex string as pid and configure 'extra' accordingly
 	bool r = false;
@@ -184,7 +185,7 @@ namespace
 void monero_transfer_utils::send_step1__prepare_params_for_get_decoys(
 	Send_Step1_RetVals &retVals,
 	//
-	const optional<string>& payment_id_string,
+	const boost::optional<string>& payment_id_string,
 	const vector<uint64_t>& sending_amounts,
 	bool is_sweeping,
 	uint32_t simple_priority,
@@ -192,10 +193,11 @@ void monero_transfer_utils::send_step1__prepare_params_for_get_decoys(
 	//
 	const vector<SpendableOutput> &unspent_outs,
 	uint64_t fee_per_b, // per v8
+	uint64_t fee_per_o,
 	uint64_t fee_quantization_mask,
 	//
-	optional<uint64_t> prior_attempt_size_calcd_fee,
-	optional<SpendableOutputToRandomAmountOutputs> prior_attempt_unspent_outs_to_mix_outs
+	boost::optional<uint64_t> prior_attempt_size_calcd_fee,
+	boost::optional<SpendableOutputToRandomAmountOutputs> prior_attempt_unspent_outs_to_mix_outs
 ) {
 	retVals = {};
 	//
@@ -222,11 +224,12 @@ void monero_transfer_utils::send_step1__prepare_params_for_get_decoys(
 		return;
 	}
 	const uint64_t base_fee = get_base_fee(fee_per_b); // in other words, fee_per_b
-	const uint64_t fee_multiplier = get_fee_multiplier(simple_priority, default_priority(), get_fee_algorithm(use_fork_rules_fn), use_fork_rules_fn);
+	// const uint64_t fee_multiplier = get_fee_multiplier(simple_priority, default_priority(), get_fee_algorithm(use_fork_rules_fn), use_fork_rules_fn);
+	const uint64_t fee_multiplier = 150;
 	//
 	uint64_t attempt_at_min_fee;
 	if (prior_attempt_size_calcd_fee == none) {
-		attempt_at_min_fee = estimate_fee(true/*use_per_byte_fee*/, true/*use_rct*/, 1/*est num inputs*/, fake_outs_count, 2, extra.size(), bulletproof, clsag, base_fee, fee_multiplier, fee_quantization_mask);
+		attempt_at_min_fee = estimate_fee(true/*use_per_byte_fee*/, true/*use_rct*/, 1/*est num inputs*/, fake_outs_count, 2, extra.size(), bulletproof, clsag, fee_per_b,fee_per_o, fee_multiplier, fee_quantization_mask);
 		// use a minimum viable estimate_fee() with 1 input. It would be better to under-shoot this estimate, and then need to use a higher fee  from calculate_fee() because the estimate is too low,
 		// versus the worse alternative of over-estimating here and getting stuck using too high of a fee that leads to fingerprinting
 	} else {
@@ -289,7 +292,7 @@ void monero_transfer_utils::send_step1__prepare_params_for_get_decoys(
 	uint64_t needed_fee = estimate_fee(
 		true/*use_per_byte_fee*/, use_rct,
 		retVals.using_outs.size(), fake_outs_count, /*tx.dsts.size()*/1+1, extra.size(),
-		bulletproof, clsag, base_fee, fee_multiplier, fee_quantization_mask
+		bulletproof, clsag, fee_per_b,fee_per_o, fee_multiplier, fee_quantization_mask
 	);
 	// if newNeededFee < neededFee, use neededFee instead (should only happen on the 2nd or later times through (due to estimated fee being too low))
 	if (prior_attempt_size_calcd_fee != none && needed_fee < attempt_at_min_fee) {
@@ -327,7 +330,7 @@ void monero_transfer_utils::send_step1__prepare_params_for_get_decoys(
 			needed_fee = estimate_fee(
 				true/*use_per_byte_fee*/, use_rct,
 				retVals.using_outs.size(), fake_outs_count, /*tx.dsts.size()*/1+1, extra.size(),
-				bulletproof, clsag, base_fee, fee_multiplier, fee_quantization_mask
+				bulletproof, clsag, fee_per_b,fee_per_o, fee_multiplier, fee_quantization_mask
 			);
 			total_incl_fees = sum_sending_amounts + needed_fee; // because fee changed
 		}
@@ -364,7 +367,7 @@ void monero_transfer_utils::pre_step2_tie_unspent_outs_to_mix_outs_for_all_futur
 	const vector<SpendableOutput> &using_outs,
 	vector<RandomAmountOutputs> mix_outs_from_server,
 	//
-	const optional<SpendableOutputToRandomAmountOutputs> &prior_attempt_unspent_outs_to_mix_outs
+	const boost::optional<SpendableOutputToRandomAmountOutputs> &prior_attempt_unspent_outs_to_mix_outs
 ) {
 	retVals.errCode = noError;
 	//
@@ -432,13 +435,14 @@ void monero_transfer_utils::send_step2__try_create_transaction(
 	const string &sec_viewKey_string,
 	const string &sec_spendKey_string,
 	const vector<string> &to_address_strings,
-	const optional<string>& payment_id_string,
+	const boost::optional<string>& payment_id_string,
 	const vector<uint64_t>& sending_amounts,
 	uint64_t change_amount,
 	uint64_t fee_amount,
 	uint32_t simple_priority,
 	const vector<SpendableOutput> &using_outs,
 	uint64_t fee_per_b, // per v8
+	uint64_t fee_per_o,
 	uint64_t fee_quantization_mask,
 	vector<RandomAmountOutputs> &mix_outs, // cannot be const due to convenience__create_transaction's mutability requirement
 	use_fork_rules_fn_type use_fork_rules_fn,
@@ -470,7 +474,8 @@ void monero_transfer_utils::send_step2__try_create_transaction(
 		true/*use_per_byte_fee*/,
 		*create_tx__retVals.tx, blob_size,
 		get_base_fee(fee_per_b)/*i.e. fee_per_b*/,
-		get_fee_multiplier(simple_priority, default_priority(), get_fee_algorithm(use_fork_rules_fn), use_fork_rules_fn),
+		fee_per_o,
+		get_fee_percent(simple_priority,txtype::standard),
 		fee_quantization_mask
 	);
 //	if (fee_actually_needed > fee_amount) {
@@ -510,17 +515,8 @@ void monero_transfer_utils::create_transaction(
 	// TODO: do we need to sort destinations by amount, here, according to 'decompose_destinations'?
 	//
 	uint32_t fake_outputs_count = fixed_mixinsize();
-	rct::RangeProofType range_proof_type = rct::RangeProofPaddedBulletproof;
-	int bp_version = 1;
-	if (use_fork_rules_fn(HF_VERSION_BULLETPROOF_PLUS, -10)) {
-		bp_version = 4;
-	}
-	else if (use_fork_rules_fn(HF_VERSION_CLSAG, -10)) {
-		bp_version = 3;
-	}
-	else if (use_fork_rules_fn(HF_VERSION_SMALLER_BP, -10)) {
-		bp_version = 2;
-	}
+	rct::RangeProofType range_proof_type =rct::RangeProofType::PaddedBulletproof;
+	int bp_version = 3;
 	const rct::RCTConfig rct_config {
 		range_proof_type,
 		bp_version,
@@ -586,7 +582,7 @@ void monero_transfer_utils::create_transaction(
 				auto oe = tx_output_entry{};
 				oe.first = mix_out__output.global_index;
 				//
-				crypto::public_key public_key = AUTO_VAL_INIT(public_key);
+				crypto::public_key public_key{};
 				if(!string_tools::hex_to_pod(mix_out__output.public_key, public_key)) {
 					retVals.errCode = givenAnInvalidPubKey;
 					return;
@@ -610,7 +606,7 @@ void monero_transfer_utils::create_transaction(
 		auto real_oe = tx_output_entry{};
 		real_oe.first = outputs[out_index].global_index;
 		//
-		crypto::public_key public_key = AUTO_VAL_INIT(public_key);
+		crypto::public_key public_key{};
 		if(!string_tools::validate_hex(64, outputs[out_index].public_key)) {
 			retVals.errCode = givenAnInvalidPubKey;
 			return;
@@ -641,7 +637,7 @@ void monero_transfer_utils::create_transaction(
 		}
 		src.outputs.insert(src.outputs.begin() + real_output_index, real_oe);
 		//
-		crypto::public_key tx_pub_key = AUTO_VAL_INIT(tx_pub_key);
+		crypto::public_key tx_pub_key{};
 		if(!string_tools::validate_hex(64, outputs[out_index].tx_pub_key)) {
 			retVals.errCode = givenAnInvalidPubKey;
 			return;
@@ -691,14 +687,14 @@ void monero_transfer_utils::create_transaction(
  							  error::wallet_internal_error,
  							  "Amounts don't match destinations");
  	for (size_t i = 0; i < to_addrs.size(); ++i) {
- 		tx_destination_entry to_dst = AUTO_VAL_INIT(to_dst);
+ 		tx_destination_entry to_dst{};
  		to_dst.addr = to_addrs[i].address;
  		to_dst.amount = sending_amounts[i];
  		to_dst.is_subaddress = to_addrs[i].is_subaddress;
  		splitted_dsts.push_back(to_dst);
  	}
 	//
-	cryptonote::tx_destination_entry change_dst = AUTO_VAL_INIT(change_dst);
+	cryptonote::tx_destination_entry change_dst{};
 	change_dst.amount = change_amount;
 	//
 	if (change_dst.amount == 0) {
@@ -733,11 +729,14 @@ void monero_transfer_utils::create_transaction(
 	cryptonote::transaction tx;
 	crypto::secret_key tx_key;
 	std::vector<crypto::secret_key> additional_tx_keys;
+	beldex_construct_tx_params tx_params;
+	tx_params.hf_version = 17;
+	tx_params.tx_type = txtype::standard;
 	bool r = cryptonote::construct_tx_and_get_tx_key(
 		sender_account_keys, subaddresses,
-		sources, splitted_dsts, change_dst.addr, extra,
+		sources, splitted_dsts, change_dst, extra,
 		tx, unlock_time, tx_key, additional_tx_keys,
-		true, rct_config, true);
+		rct_config, nullptr,tx_params);
 
 	LOG_PRINT_L2("constructed tx, r="<<r);
 	if (!r) {
@@ -750,7 +749,7 @@ void monero_transfer_utils::create_transaction(
 		retVals.errCode = transactionTooBig;
 		return;
 	}
-	bool use_bulletproofs = !tx.rct_signatures.p.bulletproofs_plus.empty();
+	bool use_bulletproofs = !tx.rct_signatures.p.bulletproofs.empty();
 	THROW_WALLET_EXCEPTION_IF(use_bulletproofs != true, error::wallet_internal_error, "Expected tx use_bulletproofs to equal bulletproof flag");
 	//
 	retVals.tx = tx;
@@ -764,7 +763,7 @@ void monero_transfer_utils::convenience__create_transaction(
 	const string &sec_viewKey_string,
 	const string &sec_spendKey_string,
 	const vector<string> &to_address_strings,
-	const optional<string>& payment_id_string,
+	const boost::optional<string>& payment_id_string,
 	const vector<uint64_t>& sending_amounts,
 	uint64_t change_amount,
 	uint64_t fee_amount,

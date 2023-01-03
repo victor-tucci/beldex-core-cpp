@@ -30,6 +30,7 @@
 //
 //
 //
+#include <boost/optional.hpp>
 #include "monero_wallet_utils.hpp"
 #include <boost/algorithm/string.hpp>
 #include "cryptonote_basic.h"
@@ -38,7 +39,7 @@
 #include "wallet_errors.h" // not crazy about including this but it's not that bad
 #include "keccak.h"
 //
-#include "string_tools.h"
+#include "epee/string_tools.h"
 using namespace epee;
 //
 extern "C" {
@@ -62,7 +63,8 @@ void monero_wallet_utils::coerce_valid_sec_key_from(
 	secret_key &dst__sec_seed
 ) { // cn_fast_hash legacy16B_sec_seed in order to 'pad' it to 256 bits so it can be chopped to ec_scalar
 	static_assert(!epee::has_padding<legacy16B_secret_key>(), "potential hash of padding data");
-	static_assert(!epee::has_padding<secret_key>(), "writing to struct with extra data");
+	static_assert(is_byte_spannable<secret_key>, "writing to struct with extra data");
+	// static_assert(!epee::has_padding<secret_key>(), "writing to struct with extra data");
 	cn_pad_by_fast_hash((uint8_t *)&legacy16B_mymonero_sec_seed, sizeof(legacy16B_secret_key),
 						(uint8_t *)&dst__sec_seed, sizeof(secret_key));
 }
@@ -375,8 +377,8 @@ bool monero_wallet_utils::address_and_keys_from_seed(
 bool monero_wallet_utils::validate_wallet_components_with( // returns !did_error
 	const string &address_string,
 	const string &sec_viewKey_string,
-	optional<string> sec_spendKey_string,
-	optional<string> sec_seed_string,
+	boost::optional<string> sec_spendKey_string,
+	boost::optional<string> sec_seed_string,
 	cryptonote::network_type nettype,
 	WalletComponentsValidationResults &retVals
 ) { // TODO: how can the err_strings be prepared for localization?

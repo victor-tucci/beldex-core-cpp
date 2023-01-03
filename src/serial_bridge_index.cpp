@@ -32,6 +32,7 @@
 //
 #include "serial_bridge_index.hpp"
 //
+#include <boost/optional.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/foreach.hpp>
@@ -43,7 +44,7 @@
 #include "monero_wallet_utils.hpp"
 #include "monero_key_image_utils.hpp"
 #include "wallet_errors.h"
-#include "string_tools.h"
+#include "epee/string_tools.h"
 #include "ringct/rctSigs.h"
 //
 #include "serial_bridge_utils.hpp"
@@ -207,10 +208,11 @@ string serial_bridge::validate_components_for_login(const string address, const 
 	return ret_json_from_root(root);
 }
 
-string serial_bridge::estimated_tx_network_fee(const string priority, const string feePerb, const string forkVersion)
+string serial_bridge::estimated_tx_network_fee(const string priority, const string feePerb,const string feePerO, const string forkVersion)
 {
 	uint64_t fee = monero_fee_utils::estimated_tx_network_fee(
 		stoull(feePerb),
+		stoull(feePerO),
 		stoul(priority),
 		monero_fork_rules::make_use_fork_rules_fn(stoul(forkVersion))
 	);
@@ -289,14 +291,14 @@ string serial_bridge::send_step1__prepare_params_for_get_decoys(const string &ar
 		//
 		unspent_outs.push_back(std::move(out));
 	}
-	optional<string> optl__prior_attempt_size_calcd_fee_string = json_root.get_optional<string>("prior_attempt_size_calcd_fee");
-	optional<uint64_t> optl__prior_attempt_size_calcd_fee = none;
+	boost::optional<string> optl__prior_attempt_size_calcd_fee_string = json_root.get_optional<string>("prior_attempt_size_calcd_fee");
+	boost::optional<uint64_t> optl__prior_attempt_size_calcd_fee = none;
 	if (optl__prior_attempt_size_calcd_fee_string != none) {
 		optl__prior_attempt_size_calcd_fee = stoull(*optl__prior_attempt_size_calcd_fee_string);
 	}
-	optional<SpendableOutputToRandomAmountOutputs> optl__prior_attempt_unspent_outs_to_mix_outs;
+	boost::optional<SpendableOutputToRandomAmountOutputs> optl__prior_attempt_unspent_outs_to_mix_outs;
 	SpendableOutputToRandomAmountOutputs prior_attempt_unspent_outs_to_mix_outs;
-	optional<boost::property_tree::ptree &> optl__prior_attempt_unspent_outs_to_mix_outs_json = json_root.get_child_optional("prior_attempt_unspent_outs_to_mix_outs");
+	boost::optional<boost::property_tree::ptree &> optl__prior_attempt_unspent_outs_to_mix_outs_json = json_root.get_child_optional("prior_attempt_unspent_outs_to_mix_outs");
 	if (optl__prior_attempt_unspent_outs_to_mix_outs_json != none)
 	{
 		BOOST_FOREACH(boost::property_tree::ptree::value_type &outs_to_mix_outs_desc, *optl__prior_attempt_unspent_outs_to_mix_outs_json)
@@ -317,7 +319,7 @@ string serial_bridge::send_step1__prepare_params_for_get_decoys(const string &ar
 		optl__prior_attempt_unspent_outs_to_mix_outs = std::move(prior_attempt_unspent_outs_to_mix_outs);
 	}
 	uint8_t fork_version = 0; // if missing
-	optional<string> optl__fork_version_string = json_root.get_optional<string>("fork_version");
+	boost::optional<string> optl__fork_version_string = json_root.get_optional<string>("fork_version");
 	if (optl__fork_version_string != none) {
 		fork_version = stoul(*optl__fork_version_string);
 	}
@@ -332,6 +334,7 @@ string serial_bridge::send_step1__prepare_params_for_get_decoys(const string &ar
 		monero_fork_rules::make_use_fork_rules_fn(fork_version),
 		unspent_outs,
 		stoull(json_root.get<string>("fee_per_b")), // per v8
+		stoull(json_root.get<string>("fee_per_o")),
 		stoull(json_root.get<string>("fee_mask")),
 		//
 		optl__prior_attempt_size_calcd_fee, // use this for passing step2 "must-reconstruct" return values back in, i.e. re-entry; when nil, defaults to attempt at network min
@@ -416,9 +419,9 @@ string serial_bridge::pre_step2_tie_unspent_outs_to_mix_outs_for_all_future_tx_a
 		mix_outs_from_server.push_back(std::move(amountAndOuts));
 	}
 	//
-	optional<SpendableOutputToRandomAmountOutputs> optl__prior_attempt_unspent_outs_to_mix_outs;
+	boost::optional<SpendableOutputToRandomAmountOutputs> optl__prior_attempt_unspent_outs_to_mix_outs;
 	SpendableOutputToRandomAmountOutputs prior_attempt_unspent_outs_to_mix_outs;
-	optional<boost::property_tree::ptree &> optl__prior_attempt_unspent_outs_to_mix_outs_json = json_root.get_child_optional("prior_attempt_unspent_outs_to_mix_outs");
+	boost::optional<boost::property_tree::ptree &> optl__prior_attempt_unspent_outs_to_mix_outs_json = json_root.get_child_optional("prior_attempt_unspent_outs_to_mix_outs");
 	if (optl__prior_attempt_unspent_outs_to_mix_outs_json != none)
 	{
 		BOOST_FOREACH(boost::property_tree::ptree::value_type &outs_to_mix_outs_desc, *optl__prior_attempt_unspent_outs_to_mix_outs_json)
@@ -547,7 +550,7 @@ string serial_bridge::send_step2__try_create_transaction(const string &args_stri
 		mix_outs.push_back(std::move(amountAndOuts));
 	}
 	uint8_t fork_version = 0; // if missing
-	optional<string> optl__fork_version_string = json_root.get_optional<string>("fork_version");
+	boost::optional<string> optl__fork_version_string = json_root.get_optional<string>("fork_version");
 	if (optl__fork_version_string != none) {
 		fork_version = stoul(*optl__fork_version_string);
 	}
@@ -566,6 +569,7 @@ string serial_bridge::send_step2__try_create_transaction(const string &args_stri
 		stoul(json_root.get<string>("priority")),
 		using_outs,
 		stoull(json_root.get<string>("fee_per_b")),
+		stoull(json_root.get<string>("fee_per_o")),
 		stoull(json_root.get<string>("fee_mask")),
 		mix_outs,
 		monero_fork_rules::make_use_fork_rules_fn(fork_version),

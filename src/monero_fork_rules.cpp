@@ -59,7 +59,7 @@ bool monero_fork_rules::lightwallet_hardcoded__use_fork_rules(uint8_t version, i
 // Protocol / Defaults
 uint32_t monero_fork_rules::fixed_ringsize()
 {
-	return 16; // v15
+	return 10; // v17
 }
 uint32_t monero_fork_rules::fixed_mixinsize()
 {
