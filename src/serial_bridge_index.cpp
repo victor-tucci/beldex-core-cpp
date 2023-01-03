@@ -44,7 +44,7 @@
 #include "monero_wallet_utils.hpp"
 #include "monero_key_image_utils.hpp"
 #include "wallet_errors.h"
-#include "string_tools.h"
+#include "epee/string_tools.h"
 #include "ringct/rctSigs.h"
 //
 #include "serial_bridge_utils.hpp"
@@ -208,10 +208,11 @@ string serial_bridge::validate_components_for_login(const string address, const 
 	return ret_json_from_root(root);
 }
 
-string serial_bridge::estimated_tx_network_fee(const string priority, const string feePerb, const string forkVersion)
+string serial_bridge::estimated_tx_network_fee(const string priority, const string feePerb,const string feePerO, const string forkVersion)
 {
 	uint64_t fee = monero_fee_utils::estimated_tx_network_fee(
 		stoull(feePerb),
+		stoull(feePerO),
 		stoul(priority),
 		monero_fork_rules::make_use_fork_rules_fn(stoul(forkVersion))
 	);
@@ -333,6 +334,7 @@ string serial_bridge::send_step1__prepare_params_for_get_decoys(const string &ar
 		monero_fork_rules::make_use_fork_rules_fn(fork_version),
 		unspent_outs,
 		stoull(json_root.get<string>("fee_per_b")), // per v8
+		stoull(json_root.get<string>("fee_per_o")),
 		stoull(json_root.get<string>("fee_mask")),
 		//
 		optl__prior_attempt_size_calcd_fee, // use this for passing step2 "must-reconstruct" return values back in, i.e. re-entry; when nil, defaults to attempt at network min
@@ -567,6 +569,7 @@ string serial_bridge::send_step2__try_create_transaction(const string &args_stri
 		stoul(json_root.get<string>("priority")),
 		using_outs,
 		stoull(json_root.get<string>("fee_per_b")),
+		stoull(json_root.get<string>("fee_per_o")),
 		stoull(json_root.get<string>("fee_mask")),
 		mix_outs,
 		monero_fork_rules::make_use_fork_rules_fn(fork_version),

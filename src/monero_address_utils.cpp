@@ -34,7 +34,7 @@ using namespace monero;
 using namespace address_utils;
 //
 #include "cryptonote_basic/cryptonote_basic_impl.h"
-#include "string_tools.h"
+#include "epee/string_tools.h"
 #include "cryptonote_basic/account.h"
 using namespace cryptonote;
 //

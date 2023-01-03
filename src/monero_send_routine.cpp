@@ -33,7 +33,7 @@
 //
 #include <boost/property_tree/json_parser.hpp>
 #include "wallet_errors.h"
-#include "string_tools.h"
+#include "epee/string_tools.h"
 //
 #include "monero_send_routine.hpp"
 //
@@ -105,7 +105,7 @@ LightwalletAPI_Req_GetRandomOuts monero_send_routine::new__req_params__get_rando
 	}
 
 	vector<string> decoy_req__amounts;
-	BOOST_FOREACH(SpendableOutput &using_out, decoy_requests)
+	for(SpendableOutput &using_out : decoy_requests)
 	{
 		if (using_out.rct != none && (*(using_out.rct)).size() > 0) {
 			decoy_req__amounts.push_back("0");
@@ -128,9 +128,10 @@ LightwalletAPI_Res_GetUnspentOuts monero_send_routine::new__parsed_res__get_unsp
 	const public_key &pub_spendKey
 ) {
 	uint64_t final__per_byte_fee = 0;
+	uint64_t final_fee_per_output = 0;
 	uint64_t fee_mask = 10000; // just a fallback value - no real reason to set this here normally
 	try {
-		boost::optional<uint64_t> possible__uint64 = _possible_uint64_from_json(res, "per_byte_fee");
+		boost::optional<uint64_t> possible__uint64 = _possible_uint64_from_json(res, "fee_per_byte");
 		if (possible__uint64 != none) {
 			final__per_byte_fee = *possible__uint64;
 		}
@@ -143,7 +144,20 @@ LightwalletAPI_Res_GetUnspentOuts monero_send_routine::new__parsed_res__get_unsp
 		};
 	}
 	try {
-		boost::optional<uint64_t> possible__uint64 = _possible_uint64_from_json(res, "fee_mask");
+		boost::optional<uint64_t> possible__uint64 = _possible_uint64_from_json(res, "fee_per_output");
+		if (possible__uint64 != none) {
+			final_fee_per_output = *possible__uint64;
+		}
+	} catch (const std::exception &e) {
+		cout << "Unspent outs per-output-fee parse error: " << e.what() << endl;
+		string err_msg = "Unspent outs: Unrecognized per-output fee format";
+		return {
+			err_msg,
+			none, none, none
+		};
+	}
+	try {
+		boost::optional<uint64_t> possible__uint64 = _possible_uint64_from_json(res, "quantization_mask");
 		if (possible__uint64 != none) {
 			fee_mask = *possible__uint64;
 		}
@@ -179,7 +193,7 @@ LightwalletAPI_Res_GetUnspentOuts monero_send_routine::new__parsed_res__get_unsp
 		};
 	}
 	vector<SpendableOutput> unspent_outs;
-	BOOST_FOREACH(const boost::property_tree::ptree::value_type &output_desc, res.get_child("outputs"))
+	for(const boost::property_tree::ptree::value_type &output_desc : res.get_child("outputs"))
 	{
 		assert(output_desc.first.empty()); // array elements have no names
 		//
@@ -221,7 +235,7 @@ LightwalletAPI_Res_GetUnspentOuts monero_send_routine::new__parsed_res__get_unsp
 		}
 		bool isOutputSpent = false; // let's see…
 		{
-			BOOST_FOREACH(const boost::property_tree::ptree::value_type &spend_key_image_string, output_desc.second.get_child("spend_key_images"))
+			for(const boost::property_tree::ptree::value_type &spend_key_image_string : output_desc.second.get_child("spend_key_images"))
 			{
 //				cout << "spend_key_image_string: " << spend_key_image_string.second.data() << endl;
 				KeyImageRetVals retVals;
@@ -261,7 +275,7 @@ LightwalletAPI_Res_GetUnspentOuts monero_send_routine::new__parsed_res__get_unsp
 	auto fork_version = res.get_optional<uint8_t>("fork_version");
 	return LightwalletAPI_Res_GetUnspentOuts{
 		none,
-		final__per_byte_fee, fee_mask, unspent_outs,
+		final__per_byte_fee,final_fee_per_output, fee_mask, unspent_outs,
 		fork_version ? *fork_version : static_cast<uint8_t>(0)
 	};
 }
@@ -269,7 +283,7 @@ LightwalletAPI_Res_GetRandomOuts monero_send_routine::new__parsed_res__get_rando
 	const property_tree::ptree &res
 ) {
 	vector<RandomAmountOutputs> mix_outs;
-	BOOST_FOREACH(const boost::property_tree::ptree::value_type &mix_out_desc, res.get_child("amount_outs"))
+	for(const boost::property_tree::ptree::value_type &mix_out_desc : res.get_child("amount_outs"))
 	{
 		assert(mix_out_desc.first.empty()); // array elements have no names
 		auto amountAndOuts = RandomAmountOutputs{};
@@ -283,7 +297,7 @@ LightwalletAPI_Res_GetRandomOuts monero_send_routine::new__parsed_res__get_rando
 			string err_msg = "Random outs: Unrecognized 'amount' format";
 			return {err_msg, none};
 		}
-		BOOST_FOREACH(const boost::property_tree::ptree::value_type &mix_out_output_desc, mix_out_desc.second.get_child("outputs"))
+		for(const boost::property_tree::ptree::value_type &mix_out_output_desc : mix_out_desc.second.get_child("outputs"))
 		{
 			assert(mix_out_output_desc.first.empty()); // array elements have no names
 			auto amountOutput = RandomAmountOutput{};
@@ -329,6 +343,7 @@ struct _SendFunds_ConstructAndSendTx_Args
 	//
 	const vector<SpendableOutput> &unspent_outs;
 	uint64_t fee_per_b;
+	uint64_t fee_per_o;
 	uint64_t fee_quantization_mask;
 	uint8_t fork_version;
 	//
@@ -363,6 +378,7 @@ void _reenterable_construct_and_send_tx(
 		use_fork_rules,
 		args.unspent_outs,
 		args.fee_per_b,
+		args.fee_per_o,
 		args.fee_quantization_mask,
 		//
 		prior_attempt_size_calcd_fee, // use this for passing step2 "must-reconstruct" return values back in, i.e. re-entry; when nil, defaults to attempt at network min
@@ -430,6 +446,7 @@ void _reenterable_construct_and_send_tx(
 			args.simple_priority,
 			step1_retVals.using_outs,
 			args.fee_per_b,
+			args.fee_per_o,
 			args.fee_quantization_mask,
 			tie_outs_to_mix_outs_retVals.mix_outs,
 			std::move(use_fork_rules),

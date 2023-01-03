@@ -34,7 +34,7 @@
 //
 #include <boost/optional.hpp>
 //
-#include "string_tools.h"
+#include "epee/string_tools.h"
 //
 #include "crypto.h"
 #include "cryptonote_basic.h"
@@ -204,6 +204,7 @@ namespace monero_transfer_utils
 		//
 		const vector<SpendableOutput> &unspent_outs,
 		uint64_t fee_per_b, // per v8
+		uint64_t fee_per_o,
 		uint64_t fee_quantization_mask,
 		//
 		boost::optional<uint64_t> prior_attempt_size_calcd_fee, // use this for passing step2 "must-reconstruct" return values back in, i.e. re-entry; when nil, defaults to attempt at network min
@@ -254,6 +255,7 @@ namespace monero_transfer_utils
 		uint32_t simple_priority,
 		const vector<SpendableOutput> &using_outs,
 		uint64_t fee_per_b, // per v8
+		uint64_t fee_per_o,
 		uint64_t fee_quantization_mask,
 		vector<RandomAmountOutputs> &mix_outs, // it gets sorted
 		use_fork_rules_fn_type use_fork_rules_fn,

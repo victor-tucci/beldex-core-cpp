@@ -33,7 +33,7 @@
 #include <regex>
 #include "cryptonote_basic.h"
 #include "cryptonote_basic/blobdatatype.h"
-#include "string_tools.h"
+#include "epee/string_tools.h"
 using namespace epee;
 using namespace std;
 using namespace boost;

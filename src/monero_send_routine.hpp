@@ -36,7 +36,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 //
-#include "string_tools.h"
+#include "epee/string_tools.h"
 #include "crypto.h"
 #include "cryptonote_basic.h"
 #include "cryptonote_format_utils.h"
@@ -101,7 +101,7 @@ namespace monero_send_routine
 	{
 		boost::property_tree::ptree req_params_root;
 		boost::property_tree::ptree amounts_ptree;
-		BOOST_FOREACH(const string &amount_string, req_params.amounts)
+		for(const string &amount_string : req_params.amounts)
 		{
 			property_tree::ptree amount_child;
 			amount_child.put("", amount_string);
@@ -202,6 +202,7 @@ namespace monero_send_routine
 		boost::optional<string> err_msg;
 		// OR
 		boost::optional<uint64_t> per_byte_fee;
+		boost::optional<uint64_t> fee_per_output;
 		boost::optional<uint64_t> fee_mask;
 		boost::optional<vector<SpendableOutput>> unspent_outs;
 		uint8_t fork_version;

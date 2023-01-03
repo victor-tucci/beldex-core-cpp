@@ -33,7 +33,7 @@
 #include "serial_bridge_utils.hpp"
 #include <boost/foreach.hpp>
 #include "wallet_errors.h"
-#include "string_tools.h"
+#include "epee/string_tools.h"
 #include <boost/optional.hpp>
 
 using namespace tools;
@@ -50,14 +50,14 @@ network_type serial_bridge_utils::nettype_from_string(const string &nettype_stri
 		return MAINNET;
 	} else if (nettype_string == "TESTNET") {
 		return TESTNET;
-	} else if (nettype_string == "STAGENET") {
-		return STAGENET;
+	} else if (nettype_string == "DEVNET") {
+		return DEVNET;
 	} else if (nettype_string == "FAKECHAIN") {
 		return FAKECHAIN;
 	} else if (nettype_string == "UNDEFINED") {
 		return UNDEFINED;
 	}
-	THROW_WALLET_EXCEPTION_IF(false, error::wallet_internal_error, "Unrecognized nettype_string")
+	THROW_WALLET_EXCEPTION_IF(false, error::wallet_internal_error, "Unrecognized nettype_string");
 	return UNDEFINED;
 }
 string serial_bridge_utils::string_from_nettype(network_type nettype)
@@ -67,14 +67,14 @@ string serial_bridge_utils::string_from_nettype(network_type nettype)
 			return "MAINNET";
 		case TESTNET:
 			return "TESTNET";
-		case STAGENET:
-			return "STAGENET";
+		case DEVNET:
+			return "DEVNET";
 		case FAKECHAIN:
 			return "FAKECHAIN";
 		case UNDEFINED:
 			return "UNDEFINED";
 		default:
-			THROW_WALLET_EXCEPTION_IF(false, error::wallet_internal_error, "Unrecognized nettype for string conversion")
+			THROW_WALLET_EXCEPTION_IF(false, error::wallet_internal_error, "Unrecognized nettype for string conversion");
 			return "UNDEFINED";
 	}
 }

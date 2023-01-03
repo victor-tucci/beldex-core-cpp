@@ -34,6 +34,7 @@
 #define monero_wallet_utils_hpp
 
 #include <boost/optional.hpp>
+#include <boost/utility/value_init.hpp>
 #include "serialization/binary_archive.h"
 #include "cryptonote_basic.h"
 #include "cryptonote_basic_impl.h"
@@ -44,9 +45,11 @@
 //
 #include "generic-ops.h" // mostly to get its includes
 //
-#include "misc_log_ex.h"
-#include "wipeable_string.h"
-#include "string_tools.h"
+#include "epee/misc_log_ex.h"
+#include "epee/wipeable_string.h"
+#include "epee/string_tools.h"
+#include "common/pod-class.h"
+
 using namespace epee;
 //
 using namespace tools; // intentionally first
