@@ -1,7 +1,7 @@
 
 cmake_minimum_required(VERSION 3.4.1)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
 
 project(TEST)
@@ -14,11 +14,28 @@ find_package(Boost COMPONENTS
     thread REQUIRED
 )
 
-set(MONERO_SRC "contrib/monero-core-custom")
+if (APPLE AND NOT IOS)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=default")
+  if (NOT OpenSSL_DIR)
+      EXECUTE_PROCESS(COMMAND brew --prefix openssl
+        OUTPUT_VARIABLE OPENSSL_ROOT_DIR
+        OUTPUT_STRIP_TRAILING_WHITESPACE)
+    message(STATUS "Using OpenSSL found at ${OPENSSL_ROOT_DIR}")
+  endif()
+endif()
+
+find_package(OpenSSL REQUIRED)
+
+set(MONERO_SRC "contrib/beldex-core-custom")
+
+# add_subdirectory(${MONERO_SRC}/external/easylogging++)
 
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories("src")
 include_directories(${MONERO_SRC})
+include_directories("${MONERO_SRC}/external")
+include_directories("${MONERO_SRC}/external/loki-mq")
+include_directories("${MONERO_SRC}/external/easylogging++")
 include_directories("${MONERO_SRC}/epee/include")
 include_directories("${MONERO_SRC}/common")
 include_directories("${MONERO_SRC}/vtlogger")
@@ -66,10 +83,13 @@ set(
     ${MONERO_SRC}/cryptonote_basic/cryptonote_basic_impl.cpp
     ${MONERO_SRC}/cryptonote_basic/account.cpp
     ${MONERO_SRC}/cryptonote_basic/cryptonote_format_utils.cpp
-    ${MONERO_SRC}/cryptonote_basic/cryptonote_format_utils_basic.cpp
+    ${MONERO_SRC}/cryptonote_basic/cryptonote_basic.cpp
     ${MONERO_SRC}/crypto/crypto.cpp
     ${MONERO_SRC}/crypto/hash.c
-    ${MONERO_SRC}/crypto/slow-hash-dummied.cpp
+    ${MONERO_SRC}/crypto/cn_heavy_hash_hard_arm.cpp
+    ${MONERO_SRC}/crypto/cn_heavy_hash_hard_intel.cpp
+    ${MONERO_SRC}/crypto/cn_heavy_hash_soft.cpp
+    ${MONERO_SRC}/crypto/cn_turtle_hash.c
     ${MONERO_SRC}/crypto/oaes_lib.c
     ${MONERO_SRC}/crypto/crypto-ops.c
     ${MONERO_SRC}/crypto/crypto-ops-data.c
@@ -91,8 +111,11 @@ set(
     ${MONERO_SRC}/common/threadpool.cpp
     ${MONERO_SRC}/common/aligned.c
     ${MONERO_SRC}/common/util.cpp
+    ${MONERO_SRC}/common/i18n.cpp
+    ${MONERO_SRC}/common/string_util.cpp
     ${MONERO_SRC}/epee/src/hex.cpp
     ${MONERO_SRC}/epee/src/string_tools.cpp
+    ${MONERO_SRC}/epee/src/portable_storage.cpp
     ${MONERO_SRC}/epee/src/memwipe.c
     ${MONERO_SRC}/epee/src/mlocker.cpp
     ${MONERO_SRC}/epee/src/wipeable_string.cpp
@@ -103,7 +126,6 @@ set(
     ${MONERO_SRC}/ringct/rctCryptoOps.c
     ${MONERO_SRC}/ringct/rctSigs.cpp
     ${MONERO_SRC}/ringct/bulletproofs.cc
-    ${MONERO_SRC}/ringct/bulletproofs_plus.cc
     ${MONERO_SRC}/ringct/multiexp.cc
     ${MONERO_SRC}/mnemonics/electrum-words.cpp
     ${MONERO_SRC}/vtlogger/logger.cpp
@@ -112,7 +134,7 @@ set(
 # needed for slow-hash
 add_compile_options(-maes)
 
-add_compile_definitions(MYMONERO_CORE_CUSTOM)
+add_compile_definitions(BELDEX_CORE_CUSTOM)
 
 #Run through each source
 foreach(testSrc ${TEST_SRCS})
@@ -126,7 +148,9 @@ foreach(testSrc ${TEST_SRCS})
     target_link_libraries(
         ${testName}
         #
-        ${Boost_LIBRARIES} 
+        ${Boost_LIBRARIES}
+        OpenSSL::SSL
+        OpenSSL::Crypto 
     )
     set_target_properties(
         ${testName} PROPERTIES 
