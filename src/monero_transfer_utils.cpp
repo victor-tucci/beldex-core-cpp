@@ -511,17 +511,8 @@ void monero_transfer_utils::create_transaction(
 	// TODO: do we need to sort destinations by amount, here, according to 'decompose_destinations'?
 	//
 	uint32_t fake_outputs_count = fixed_mixinsize();
-	rct::RangeProofType range_proof_type = rct::RangeProofPaddedBulletproof;
-	int bp_version = 1;
-	if (use_fork_rules_fn(HF_VERSION_BULLETPROOF_PLUS, -10)) {
-		bp_version = 4;
-	}
-	else if (use_fork_rules_fn(HF_VERSION_CLSAG, -10)) {
-		bp_version = 3;
-	}
-	else if (use_fork_rules_fn(HF_VERSION_SMALLER_BP, -10)) {
-		bp_version = 2;
-	}
+	rct::RangeProofType range_proof_type =rct::RangeProofType::PaddedBulletproof;
+	int bp_version = 3;
 	const rct::RCTConfig rct_config {
 		range_proof_type,
 		bp_version,
@@ -587,7 +578,7 @@ void monero_transfer_utils::create_transaction(
 				auto oe = tx_output_entry{};
 				oe.first = mix_out__output.global_index;
 				//
-				crypto::public_key public_key = AUTO_VAL_INIT(public_key);
+				crypto::public_key public_key{};
 				if(!string_tools::hex_to_pod(mix_out__output.public_key, public_key)) {
 					retVals.errCode = givenAnInvalidPubKey;
 					return;
@@ -611,7 +602,7 @@ void monero_transfer_utils::create_transaction(
 		auto real_oe = tx_output_entry{};
 		real_oe.first = outputs[out_index].global_index;
 		//
-		crypto::public_key public_key = AUTO_VAL_INIT(public_key);
+		crypto::public_key public_key{};
 		if(!string_tools::validate_hex(64, outputs[out_index].public_key)) {
 			retVals.errCode = givenAnInvalidPubKey;
 			return;
@@ -642,7 +633,7 @@ void monero_transfer_utils::create_transaction(
 		}
 		src.outputs.insert(src.outputs.begin() + real_output_index, real_oe);
 		//
-		crypto::public_key tx_pub_key = AUTO_VAL_INIT(tx_pub_key);
+		crypto::public_key tx_pub_key{};
 		if(!string_tools::validate_hex(64, outputs[out_index].tx_pub_key)) {
 			retVals.errCode = givenAnInvalidPubKey;
 			return;
@@ -699,7 +690,7 @@ void monero_transfer_utils::create_transaction(
  		splitted_dsts.push_back(to_dst);
  	}
 	//
-	cryptonote::tx_destination_entry change_dst = AUTO_VAL_INIT(change_dst);
+	cryptonote::tx_destination_entry change_dst{};
 	change_dst.amount = change_amount;
 	//
 	if (change_dst.amount == 0) {
@@ -734,11 +725,14 @@ void monero_transfer_utils::create_transaction(
 	cryptonote::transaction tx;
 	crypto::secret_key tx_key;
 	std::vector<crypto::secret_key> additional_tx_keys;
+	beldex_construct_tx_params tx_params;
+	tx_params.hf_version = 17;
+	tx_params.tx_type = txtype::standard;
 	bool r = cryptonote::construct_tx_and_get_tx_key(
 		sender_account_keys, subaddresses,
-		sources, splitted_dsts, change_dst.addr, extra,
+		sources, splitted_dsts, change_dst, extra,
 		tx, unlock_time, tx_key, additional_tx_keys,
-		true, rct_config, true);
+		rct_config, nullptr,tx_params);
 
 	LOG_PRINT_L2("constructed tx, r="<<r);
 	if (!r) {
@@ -751,7 +745,7 @@ void monero_transfer_utils::create_transaction(
 		retVals.errCode = transactionTooBig;
 		return;
 	}
-	bool use_bulletproofs = !tx.rct_signatures.p.bulletproofs_plus.empty();
+	bool use_bulletproofs = !tx.rct_signatures.p.bulletproofs.empty();
 	THROW_WALLET_EXCEPTION_IF(use_bulletproofs != true, error::wallet_internal_error, "Expected tx use_bulletproofs to equal bulletproof flag");
 	//
 	retVals.tx = tx;
