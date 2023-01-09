@@ -28,14 +28,11 @@ find_package(OpenSSL REQUIRED)
 
 set(MONERO_SRC "contrib/beldex-core-custom")
 
-# add_subdirectory(${MONERO_SRC}/external/easylogging++)
-
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories("src")
 include_directories(${MONERO_SRC})
 include_directories("${MONERO_SRC}/external")
 include_directories("${MONERO_SRC}/external/loki-mq")
-include_directories("${MONERO_SRC}/external/easylogging++")
 include_directories("${MONERO_SRC}/epee/include")
 include_directories("${MONERO_SRC}/common")
 include_directories("${MONERO_SRC}/vtlogger")
